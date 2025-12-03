@@ -6,6 +6,7 @@ import com.gestionpacientes.exception.ResourceNotFoundException;
 import com.gestionpacientes.model.Profesional;
 import com.gestionpacientes.repository.ProfesionalRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,10 +19,12 @@ import java.util.stream.Collectors;
 public class ProfesionalService {
 
     private final ProfesionalRepository profesionalRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public ProfesionalService(ProfesionalRepository profesionalRepository) {
+    public ProfesionalService(ProfesionalRepository profesionalRepository, PasswordEncoder passwordEncoder) {
         this.profesionalRepository = profesionalRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<ProfesionalDTO> findAll() {
@@ -54,7 +57,7 @@ public class ProfesionalService {
         }
 
         profesionalDTO.setNombreUsuario(nombreUsuarioNormalizado);
-        profesionalDTO.setPassword(passwordNormalizado);
+        profesionalDTO.setPassword(passwordEncoder.encode(passwordNormalizado)); // Encriptar contraseña
         
         Profesional profesional = convertToEntity(profesionalDTO);
         @SuppressWarnings("null") // JPA save() siempre devuelve un objeto no nulo
@@ -84,7 +87,7 @@ public class ProfesionalService {
         profesional.setApellido(profesionalDTO.getApellido());
         profesional.setNombreUsuario(nombreUsuarioNormalizado);
         if (profesionalDTO.getPassword() != null && !profesionalDTO.getPassword().isEmpty()) {
-            profesional.setPassword(passwordNormalizado);
+            profesional.setPassword(passwordEncoder.encode(passwordNormalizado)); // Encriptar contraseña
         }
         profesional.setProfesion(profesionalDTO.getProfesion());
         profesional.setTipoTerapia(profesionalDTO.getTipoTerapia());
@@ -106,6 +109,20 @@ public class ProfesionalService {
         return profesionalRepository.findByActivoTrue().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public void updatePassword(Long id, String newPassword) {
+        Objects.requireNonNull(id, "El ID no puede ser nulo");
+        Objects.requireNonNull(newPassword, "La contraseña no puede ser nula");
+        
+        Profesional profesional = profesionalRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Profesional", id));
+        
+        // Normalizar contraseña a minúsculas y encriptar
+        String passwordNormalizado = newPassword.toLowerCase().trim();
+        profesional.setPassword(passwordEncoder.encode(passwordNormalizado));
+        
+        profesionalRepository.save(profesional);
     }
 
     // Métodos de conversión

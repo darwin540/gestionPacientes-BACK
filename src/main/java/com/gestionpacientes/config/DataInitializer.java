@@ -66,10 +66,7 @@ public class DataInitializer implements CommandLineRunner {
             roles.add(adminRole);
             adminUser.setRoles(roles);
 
-            User savedUser = userRepository.save(adminUser);
-            System.out.println("Usuario admin creado exitosamente con ID: " + savedUser.getId());
-        } else {
-            System.out.println("Usuario admin ya existe");
+            userRepository.save(adminUser);
         }
     }
 }

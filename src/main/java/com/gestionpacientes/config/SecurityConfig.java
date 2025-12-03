@@ -47,6 +47,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/tipos-documento/**").hasRole("ADMIN") // Solo ADMIN puede gestionar tipos de documento
                 .requestMatchers("/api/servicios-departamentos/activos").permitAll() // Permitir ver servicios activos sin autenticación
                 .requestMatchers("/api/servicios-departamentos/**").hasRole("ADMIN") // Solo ADMIN puede gestionar servicios/departamentos
+                .requestMatchers("/api/tipos-terapia/activos").permitAll() // Permitir ver tipos de terapia activos sin autenticación
+                .requestMatchers("/api/tipos-terapia/**").hasRole("ADMIN") // Solo ADMIN puede gestionar tipos de terapia
                 .requestMatchers("/api/pacientes/**").hasAnyRole("ADMIN", "PROFESIONAL")
                 .requestMatchers("/api/terapias/**").hasAnyRole("ADMIN", "PROFESIONAL")
                 

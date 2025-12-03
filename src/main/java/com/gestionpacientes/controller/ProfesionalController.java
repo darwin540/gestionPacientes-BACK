@@ -9,9 +9,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/profesionales")
+@CrossOrigin(origins = "*")
 public class ProfesionalController {
 
     private final ProfesionalService profesionalService;
@@ -55,6 +57,16 @@ public class ProfesionalController {
     public ResponseEntity<Void> deleteProfesional(@PathVariable Long id) {
         profesionalService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/password")
+    public ResponseEntity<Void> updatePassword(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        String newPassword = request.get("password");
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        profesionalService.updatePassword(id, newPassword);
+        return ResponseEntity.ok().build();
     }
 }
 

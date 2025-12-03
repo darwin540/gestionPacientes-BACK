@@ -70,10 +70,25 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGlobalException(Exception ex) {
-        ex.printStackTrace(); // Para debugging
         Map<String, Object> response = new HashMap<>();
-        response.put("mensaje", "Error interno del servidor");
-        response.put("error", ex.getMessage());
+        
+        // Obtener el mensaje de error más descriptivo
+        String errorMessage = ex.getMessage();
+        if (errorMessage == null || errorMessage.isEmpty()) {
+            errorMessage = ex.getClass().getSimpleName();
+        }
+        
+        // Si es una excepción de base de datos, incluir más detalles
+        if (ex.getCause() != null) {
+            String causeMessage = ex.getCause().getMessage();
+            if (causeMessage != null && !causeMessage.isEmpty()) {
+                errorMessage += ": " + causeMessage;
+            }
+        }
+        
+        response.put("mensaje", "Error interno del servidor: " + errorMessage);
+        response.put("error", errorMessage);
+        response.put("tipo", ex.getClass().getSimpleName());
         response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }

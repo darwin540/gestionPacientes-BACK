@@ -61,6 +61,19 @@ CREATE TABLE IF NOT EXISTS profesionales (
     CONSTRAINT uk_profesional_nombre_usuario UNIQUE (nombre_usuario)
 );
 
+-- Eliminar columna valor_por_terapia si existe (migración)
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'profesionales' 
+        AND column_name = 'valor_por_terapia'
+    ) THEN
+        ALTER TABLE profesionales DROP COLUMN valor_por_terapia;
+    END IF;
+END $$;
+
 -- =====================================================
 -- TABLA: tipos_documento
 -- =====================================================
@@ -101,6 +114,20 @@ CREATE TABLE IF NOT EXISTS pacientes (
     updated_at TIMESTAMP,
     CONSTRAINT uk_paciente_numero_documento UNIQUE (numero_documento),
     CONSTRAINT fk_paciente_tipo_documento FOREIGN KEY (tipo_documento_id) REFERENCES tipos_documento(id) ON DELETE RESTRICT
+);
+
+-- =====================================================
+-- TABLA: tipos_terapia
+-- =====================================================
+CREATE TABLE IF NOT EXISTS tipos_terapia (
+    id BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    valor_unitario DECIMAL(10, 2) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT uk_tipo_terapia_nombre UNIQUE (nombre),
+    CONSTRAINT ck_valor_unitario_positivo CHECK (valor_unitario >= 0)
 );
 
 -- =====================================================
@@ -182,26 +209,9 @@ WHERE u.username = 'admin' AND r.name = 'ADMIN'
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- DATOS INICIALES: Tipos de Documento
+-- DATOS INICIALES: Los datos de tipos de documento, servicios/departamentos 
+-- y tipos de terapia deben ser creados desde la aplicación por el administrador
 -- =====================================================
-INSERT INTO tipos_documento (nombre, descripcion, activo) VALUES
-    ('DNI', 'Documento Nacional de Identidad', true),
-    ('Pasaporte', 'Pasaporte', true),
-    ('Cédula', 'Cédula de Identidad', true),
-    ('LC', 'Libreta Cívica', true),
-    ('LE', 'Libreta de Enrolamiento', true)
-ON CONFLICT (nombre) DO NOTHING;
-
--- =====================================================
--- DATOS INICIALES: Servicios/Departamentos
--- =====================================================
-INSERT INTO servicios_departamentos (abreviacion, nombre, activo) VALUES
-    ('PSI', 'Psicología', true),
-    ('TO', 'Terapia Ocupacional', true),
-    ('FON', 'Fonoaudiología', true),
-    ('KIN', 'Kinesiología', true),
-    ('PSQ', 'Psiquiatría', true)
-ON CONFLICT (abreviacion) DO NOTHING;
 
 -- =====================================================
 -- COMENTARIOS FINALES
