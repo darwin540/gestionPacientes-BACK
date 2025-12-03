@@ -1,0 +1,142 @@
+package com.gestionpacientes.service;
+
+import com.gestionpacientes.dto.TerapiaDTO;
+import com.gestionpacientes.exception.ResourceNotFoundException;
+import com.gestionpacientes.model.Paciente;
+import com.gestionpacientes.model.Profesional;
+import com.gestionpacientes.model.Terapia;
+import com.gestionpacientes.repository.PacienteRepository;
+import com.gestionpacientes.repository.ProfesionalRepository;
+import com.gestionpacientes.repository.TerapiaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+@Service
+@Transactional
+public class TerapiaService {
+
+    private final TerapiaRepository terapiaRepository;
+    private final PacienteRepository pacienteRepository;
+    private final ProfesionalRepository profesionalRepository;
+
+    @Autowired
+    public TerapiaService(TerapiaRepository terapiaRepository, 
+                         PacienteRepository pacienteRepository,
+                         ProfesionalRepository profesionalRepository) {
+        this.terapiaRepository = terapiaRepository;
+        this.pacienteRepository = pacienteRepository;
+        this.profesionalRepository = profesionalRepository;
+    }
+
+    public List<TerapiaDTO> findAll() {
+        return terapiaRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public TerapiaDTO findById(Long id) {
+        Objects.requireNonNull(id, "El ID no puede ser nulo");
+        Terapia terapia = terapiaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Terapia", id));
+        return convertToDTO(terapia);
+    }
+
+    public List<TerapiaDTO> findByPacienteId(Long pacienteId) {
+        return terapiaRepository.findByPacienteId(pacienteId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<TerapiaDTO> findByProfesionalId(Long profesionalId) {
+        return terapiaRepository.findByProfesionalId(profesionalId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public TerapiaDTO create(TerapiaDTO terapiaDTO) {
+        Long pacienteId = Objects.requireNonNull(terapiaDTO.getPacienteId(), "El ID del paciente no puede ser nulo");
+        Long profesionalId = Objects.requireNonNull(terapiaDTO.getProfesionalId(), "El ID del profesional no puede ser nulo");
+        
+        // Verificar que el paciente existe
+        Paciente paciente = pacienteRepository.findById(pacienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente", pacienteId));
+
+        // Verificar que el profesional existe
+        Profesional profesional = profesionalRepository.findById(profesionalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Profesional", profesionalId));
+
+        Terapia terapia = new Terapia();
+        terapia.setPaciente(paciente);
+        terapia.setProfesional(profesional);
+        terapia.setFecha(terapiaDTO.getFecha());
+        terapia.setServicio(terapiaDTO.getServicio());
+
+        Terapia savedTerapia = terapiaRepository.save(terapia);
+        Objects.requireNonNull(savedTerapia, "Error al guardar la terapia");
+        return convertToDTO(savedTerapia);
+    }
+
+    public TerapiaDTO update(Long id, TerapiaDTO terapiaDTO) {
+        Objects.requireNonNull(id, "El ID no puede ser nulo");
+        Terapia terapia = terapiaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Terapia", id));
+
+        // Verificar que el paciente existe si cambió
+        Long pacienteId = terapiaDTO.getPacienteId();
+        if (pacienteId != null && !terapia.getPaciente().getId().equals(pacienteId)) {
+            Paciente paciente = pacienteRepository.findById(pacienteId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Paciente", pacienteId));
+            terapia.setPaciente(paciente);
+        }
+
+        // Verificar que el profesional existe si cambió
+        Long profesionalId = terapiaDTO.getProfesionalId();
+        if (profesionalId != null && !terapia.getProfesional().getId().equals(profesionalId)) {
+            Profesional profesional = profesionalRepository.findById(profesionalId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Profesional", profesionalId));
+            terapia.setProfesional(profesional);
+        }
+
+        terapia.setFecha(terapiaDTO.getFecha());
+        terapia.setServicio(terapiaDTO.getServicio());
+
+        Terapia updatedTerapia = terapiaRepository.save(terapia);
+        Objects.requireNonNull(updatedTerapia, "Error al actualizar la terapia");
+        return convertToDTO(updatedTerapia);
+    }
+
+    public void delete(Long id) {
+        Objects.requireNonNull(id, "El ID no puede ser nulo");
+        if (!terapiaRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Terapia", id);
+        }
+        terapiaRepository.deleteById(id);
+    }
+
+    // Métodos de conversión
+    private TerapiaDTO convertToDTO(Terapia terapia) {
+        Objects.requireNonNull(terapia, "La terapia no puede ser nula");
+        Objects.requireNonNull(terapia.getPaciente(), "El paciente de la terapia no puede ser nulo");
+        Objects.requireNonNull(terapia.getProfesional(), "El profesional de la terapia no puede ser nulo");
+        
+        TerapiaDTO dto = new TerapiaDTO();
+        dto.setId(terapia.getId());
+        dto.setPacienteId(terapia.getPaciente().getId());
+        dto.setProfesionalId(terapia.getProfesional().getId());
+        dto.setFecha(terapia.getFecha());
+        dto.setServicio(terapia.getServicio());
+        
+        // Información adicional
+        dto.setPacienteNombre(terapia.getPaciente().getNombre());
+        dto.setPacienteApellido(terapia.getPaciente().getApellido());
+        dto.setProfesionalNombre(terapia.getProfesional().getNombre());
+        
+        return dto;
+    }
+}
+
