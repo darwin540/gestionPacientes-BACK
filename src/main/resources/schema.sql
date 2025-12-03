@@ -110,11 +110,12 @@ CREATE TABLE IF NOT EXISTS terapias (
     paciente_id BIGINT NOT NULL,
     profesional_id BIGINT NOT NULL,
     fecha TIMESTAMP NOT NULL,
-    servicio VARCHAR(200) NOT NULL,
+    servicio_departamento_id BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
     CONSTRAINT fk_terapia_paciente FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    CONSTRAINT fk_terapia_profesional FOREIGN KEY (profesional_id) REFERENCES profesionales(id) ON DELETE CASCADE
+    CONSTRAINT fk_terapia_profesional FOREIGN KEY (profesional_id) REFERENCES profesionales(id) ON DELETE CASCADE,
+    CONSTRAINT fk_terapia_servicio_departamento FOREIGN KEY (servicio_departamento_id) REFERENCES servicios_departamentos(id) ON DELETE RESTRICT
 );
 
 -- =====================================================

@@ -1,6 +1,5 @@
 package com.gestionpacientes.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
@@ -18,8 +17,12 @@ public class TerapiaDTO {
     @NotNull(message = "La fecha es obligatoria")
     private LocalDateTime fecha;
 
-    @NotBlank(message = "El servicio es obligatorio")
-    private String servicio;
+    @NotNull(message = "El servicio/departamento es obligatorio")
+    private Long servicioDepartamentoId;
+    
+    // Información adicional para respuestas
+    private String servicioDepartamentoNombre;
+    private String servicioDepartamentoAbreviacion;
 
     // Información adicional para respuestas
     private String pacienteNombre;
@@ -30,12 +33,12 @@ public class TerapiaDTO {
     public TerapiaDTO() {
     }
 
-    public TerapiaDTO(Long id, Long pacienteId, Long profesionalId, LocalDateTime fecha, String servicio) {
+    public TerapiaDTO(Long id, Long pacienteId, Long profesionalId, LocalDateTime fecha, Long servicioDepartamentoId) {
         this.id = id;
         this.pacienteId = pacienteId;
         this.profesionalId = profesionalId;
         this.fecha = fecha;
-        this.servicio = servicio;
+        this.servicioDepartamentoId = servicioDepartamentoId;
     }
 
     // Getters y Setters
@@ -71,12 +74,28 @@ public class TerapiaDTO {
         this.fecha = fecha;
     }
 
-    public String getServicio() {
-        return servicio;
+    public Long getServicioDepartamentoId() {
+        return servicioDepartamentoId;
     }
 
-    public void setServicio(String servicio) {
-        this.servicio = servicio;
+    public void setServicioDepartamentoId(Long servicioDepartamentoId) {
+        this.servicioDepartamentoId = servicioDepartamentoId;
+    }
+
+    public String getServicioDepartamentoNombre() {
+        return servicioDepartamentoNombre;
+    }
+
+    public void setServicioDepartamentoNombre(String servicioDepartamentoNombre) {
+        this.servicioDepartamentoNombre = servicioDepartamentoNombre;
+    }
+
+    public String getServicioDepartamentoAbreviacion() {
+        return servicioDepartamentoAbreviacion;
+    }
+
+    public void setServicioDepartamentoAbreviacion(String servicioDepartamentoAbreviacion) {
+        this.servicioDepartamentoAbreviacion = servicioDepartamentoAbreviacion;
     }
 
     public String getPacienteNombre() {

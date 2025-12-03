@@ -4,9 +4,11 @@ import com.gestionpacientes.dto.TerapiaDTO;
 import com.gestionpacientes.exception.ResourceNotFoundException;
 import com.gestionpacientes.model.Paciente;
 import com.gestionpacientes.model.Profesional;
+import com.gestionpacientes.model.ServicioDepartamento;
 import com.gestionpacientes.model.Terapia;
 import com.gestionpacientes.repository.PacienteRepository;
 import com.gestionpacientes.repository.ProfesionalRepository;
+import com.gestionpacientes.repository.ServicioDepartamentoRepository;
 import com.gestionpacientes.repository.TerapiaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,14 +25,17 @@ public class TerapiaService {
     private final TerapiaRepository terapiaRepository;
     private final PacienteRepository pacienteRepository;
     private final ProfesionalRepository profesionalRepository;
+    private final ServicioDepartamentoRepository servicioDepartamentoRepository;
 
     @Autowired
     public TerapiaService(TerapiaRepository terapiaRepository, 
                          PacienteRepository pacienteRepository,
-                         ProfesionalRepository profesionalRepository) {
+                         ProfesionalRepository profesionalRepository,
+                         ServicioDepartamentoRepository servicioDepartamentoRepository) {
         this.terapiaRepository = terapiaRepository;
         this.pacienteRepository = pacienteRepository;
         this.profesionalRepository = profesionalRepository;
+        this.servicioDepartamentoRepository = servicioDepartamentoRepository;
     }
 
     public List<TerapiaDTO> findAll() {
@@ -70,11 +75,15 @@ public class TerapiaService {
         Profesional profesional = profesionalRepository.findById(profesionalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profesional", profesionalId));
 
+        Long servicioDepartamentoId = Objects.requireNonNull(terapiaDTO.getServicioDepartamentoId(), "El ID del servicio/departamento no puede ser nulo");
+        ServicioDepartamento servicioDepartamento = servicioDepartamentoRepository.findById(servicioDepartamentoId)
+                .orElseThrow(() -> new ResourceNotFoundException("ServicioDepartamento", servicioDepartamentoId));
+
         Terapia terapia = new Terapia();
         terapia.setPaciente(paciente);
         terapia.setProfesional(profesional);
         terapia.setFecha(terapiaDTO.getFecha());
-        terapia.setServicio(terapiaDTO.getServicio());
+        terapia.setServicioDepartamento(servicioDepartamento);
 
         Terapia savedTerapia = terapiaRepository.save(terapia);
         Objects.requireNonNull(savedTerapia, "Error al guardar la terapia");
@@ -103,7 +112,14 @@ public class TerapiaService {
         }
 
         terapia.setFecha(terapiaDTO.getFecha());
-        terapia.setServicio(terapiaDTO.getServicio());
+        
+        // Actualizar servicio/departamento si cambió
+        Long servicioDepartamentoId = terapiaDTO.getServicioDepartamentoId();
+        if (servicioDepartamentoId != null && !terapia.getServicioDepartamento().getId().equals(servicioDepartamentoId)) {
+            ServicioDepartamento servicioDepartamento = servicioDepartamentoRepository.findById(servicioDepartamentoId)
+                    .orElseThrow(() -> new ResourceNotFoundException("ServicioDepartamento", servicioDepartamentoId));
+            terapia.setServicioDepartamento(servicioDepartamento);
+        }
 
         Terapia updatedTerapia = terapiaRepository.save(terapia);
         Objects.requireNonNull(updatedTerapia, "Error al actualizar la terapia");
@@ -124,12 +140,16 @@ public class TerapiaService {
         Objects.requireNonNull(terapia.getPaciente(), "El paciente de la terapia no puede ser nulo");
         Objects.requireNonNull(terapia.getProfesional(), "El profesional de la terapia no puede ser nulo");
         
+        Objects.requireNonNull(terapia.getServicioDepartamento(), "El servicio/departamento de la terapia no puede ser nulo");
+        
         TerapiaDTO dto = new TerapiaDTO();
         dto.setId(terapia.getId());
         dto.setPacienteId(terapia.getPaciente().getId());
         dto.setProfesionalId(terapia.getProfesional().getId());
         dto.setFecha(terapia.getFecha());
-        dto.setServicio(terapia.getServicio());
+        dto.setServicioDepartamentoId(terapia.getServicioDepartamento().getId());
+        dto.setServicioDepartamentoNombre(terapia.getServicioDepartamento().getNombre());
+        dto.setServicioDepartamentoAbreviacion(terapia.getServicioDepartamento().getAbreviacion());
         
         // Información adicional
         dto.setPacienteNombre(terapia.getPaciente().getNombre());
