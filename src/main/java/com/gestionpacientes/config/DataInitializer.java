@@ -49,25 +49,30 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initializeAdminUser() {
-        // Crear usuario admin si no existe
-        if (!userRepository.existsByUsername("admin")) {
-            // Asignar rol ADMIN
-            Role adminRole = roleRepository.findByName(Role.ADMIN)
-                    .orElseThrow(() -> new RuntimeException("Rol ADMIN no encontrado. Asegúrate de que los roles se hayan creado primero."));
-            
-            User adminUser = new User();
+        // Asignar rol ADMIN
+        Role adminRole = roleRepository.findByName(Role.ADMIN)
+                .orElseThrow(() -> new RuntimeException("Rol ADMIN no encontrado. Asegúrate de que los roles se hayan creado primero."));
+        
+        // Buscar o crear usuario admin
+        User adminUser = userRepository.findByUsername("admin").orElse(null);
+        
+        if (adminUser == null) {
+            // Crear usuario admin si no existe
+            adminUser = new User();
             adminUser.setUsername("admin");
             adminUser.setEmail("admin@gestionpacientes.com");
-            adminUser.setPassword(passwordEncoder.encode("admin123"));
-            adminUser.setNombreCompleto("Administrador del Sistema");
-            adminUser.setActivo(true);
-
-            Set<Role> roles = new HashSet<>();
-            roles.add(adminRole);
-            adminUser.setRoles(roles);
-
-            userRepository.save(adminUser);
         }
+        
+        // Actualizar/establecer contraseña siempre (para asegurar que esté correcta)
+        adminUser.setPassword(passwordEncoder.encode("admin123"));
+        adminUser.setNombreCompleto("Administrador del Sistema");
+        adminUser.setActivo(true);
+
+        Set<Role> roles = new HashSet<>();
+        roles.add(adminRole);
+        adminUser.setRoles(roles);
+
+        userRepository.save(adminUser);
     }
 }
 
