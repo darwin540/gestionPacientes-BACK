@@ -1,10 +1,6 @@
 package com.gestionpacientes.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-
-import java.math.BigDecimal;
 
 public class ProfesionalDTO {
 
@@ -13,8 +9,14 @@ public class ProfesionalDTO {
     @NotBlank(message = "El nombre es obligatorio")
     private String nombre;
 
+    @NotBlank(message = "El apellido es obligatorio")
+    private String apellido;
+
     @NotBlank(message = "El nombre de usuario es obligatorio")
     private String nombreUsuario;
+
+    @NotBlank(message = "La contraseña es obligatoria")
+    private String password;
 
     @NotBlank(message = "La profesión es obligatoria")
     private String profesion;
@@ -22,21 +24,21 @@ public class ProfesionalDTO {
     @NotBlank(message = "El tipo de terapia es obligatorio")
     private String tipoTerapia;
 
-    @NotNull(message = "El valor por terapia es obligatorio")
-    @Positive(message = "El valor por terapia debe ser positivo")
-    private BigDecimal valorPorTerapia;
+    private Boolean activo = true;
 
     // Constructores
     public ProfesionalDTO() {
     }
 
-    public ProfesionalDTO(Long id, String nombre, String nombreUsuario, String profesion, String tipoTerapia, BigDecimal valorPorTerapia) {
+    public ProfesionalDTO(Long id, String nombre, String apellido, String nombreUsuario, String password, String profesion, String tipoTerapia, Boolean activo) {
         this.id = id;
         this.nombre = nombre;
+        this.apellido = apellido;
         this.nombreUsuario = nombreUsuario;
+        this.password = password;
         this.profesion = profesion;
         this.tipoTerapia = tipoTerapia;
-        this.valorPorTerapia = valorPorTerapia;
+        this.activo = activo;
     }
 
     // Getters y Setters
@@ -54,6 +56,14 @@ public class ProfesionalDTO {
 
     public void setNombre(String nombre) {
         this.nombre = nombre;
+    }
+
+    public String getApellido() {
+        return apellido;
+    }
+
+    public void setApellido(String apellido) {
+        this.apellido = apellido;
     }
 
     public String getNombreUsuario() {
@@ -80,12 +90,20 @@ public class ProfesionalDTO {
         this.tipoTerapia = tipoTerapia;
     }
 
-    public BigDecimal getValorPorTerapia() {
-        return valorPorTerapia;
+    public String getPassword() {
+        return password;
     }
 
-    public void setValorPorTerapia(BigDecimal valorPorTerapia) {
-        this.valorPorTerapia = valorPorTerapia;
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Boolean getActivo() {
+        return activo;
+    }
+
+    public void setActivo(Boolean activo) {
+        this.activo = activo;
     }
 }
 

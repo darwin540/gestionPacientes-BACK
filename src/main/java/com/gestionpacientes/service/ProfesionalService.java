@@ -44,11 +44,18 @@ public class ProfesionalService {
     }
 
     public ProfesionalDTO create(ProfesionalDTO profesionalDTO) {
-        // Verificar si el nombre de usuario ya existe
-        if (profesionalRepository.existsByNombreUsuario(profesionalDTO.getNombreUsuario())) {
-            throw new DuplicateResourceException("El nombre de usuario ya existe: " + profesionalDTO.getNombreUsuario());
+        // Normalizar nombre de usuario a mayúsculas y contraseña a minúsculas
+        String nombreUsuarioNormalizado = profesionalDTO.getNombreUsuario().toUpperCase().trim();
+        String passwordNormalizado = profesionalDTO.getPassword().toLowerCase().trim();
+        
+        // Verificar si el nombre de usuario ya existe (sin importar mayúsculas/minúsculas)
+        if (profesionalRepository.existsByNombreUsuario(nombreUsuarioNormalizado)) {
+            throw new DuplicateResourceException("El nombre de usuario ya existe: " + nombreUsuarioNormalizado);
         }
 
+        profesionalDTO.setNombreUsuario(nombreUsuarioNormalizado);
+        profesionalDTO.setPassword(passwordNormalizado);
+        
         Profesional profesional = convertToEntity(profesionalDTO);
         @SuppressWarnings("null") // JPA save() siempre devuelve un objeto no nulo
         Profesional savedProfesional = profesionalRepository.save(profesional);
@@ -60,18 +67,28 @@ public class ProfesionalService {
         Profesional profesional = profesionalRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Profesional", id));
 
+        // Normalizar nombre de usuario a mayúsculas
+        String nombreUsuarioNormalizado = profesionalDTO.getNombreUsuario().toUpperCase().trim();
+        String passwordNormalizado = profesionalDTO.getPassword() != null && !profesionalDTO.getPassword().isEmpty() 
+            ? profesionalDTO.getPassword().toLowerCase().trim() 
+            : profesional.getPassword();
+
         // Verificar si el nombre de usuario ya existe en otro profesional
-        if (!profesional.getNombreUsuario().equals(profesionalDTO.getNombreUsuario())) {
-            if (profesionalRepository.existsByNombreUsuario(profesionalDTO.getNombreUsuario())) {
-                throw new DuplicateResourceException("El nombre de usuario ya existe: " + profesionalDTO.getNombreUsuario());
+        if (!profesional.getNombreUsuario().equalsIgnoreCase(nombreUsuarioNormalizado)) {
+            if (profesionalRepository.existsByNombreUsuario(nombreUsuarioNormalizado)) {
+                throw new DuplicateResourceException("El nombre de usuario ya existe: " + nombreUsuarioNormalizado);
             }
         }
 
         profesional.setNombre(profesionalDTO.getNombre());
-        profesional.setNombreUsuario(profesionalDTO.getNombreUsuario());
+        profesional.setApellido(profesionalDTO.getApellido());
+        profesional.setNombreUsuario(nombreUsuarioNormalizado);
+        if (profesionalDTO.getPassword() != null && !profesionalDTO.getPassword().isEmpty()) {
+            profesional.setPassword(passwordNormalizado);
+        }
         profesional.setProfesion(profesionalDTO.getProfesion());
         profesional.setTipoTerapia(profesionalDTO.getTipoTerapia());
-        profesional.setValorPorTerapia(profesionalDTO.getValorPorTerapia());
+        profesional.setActivo(profesionalDTO.getActivo() != null ? profesionalDTO.getActivo() : profesional.getActivo());
 
         Profesional updatedProfesional = profesionalRepository.save(profesional);
         return convertToDTO(updatedProfesional);
@@ -85,26 +102,36 @@ public class ProfesionalService {
         profesionalRepository.deleteById(id);
     }
 
+    public List<ProfesionalDTO> findAllActivos() {
+        return profesionalRepository.findByActivoTrue().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     // Métodos de conversión
     private ProfesionalDTO convertToDTO(Profesional profesional) {
         Objects.requireNonNull(profesional, "El profesional no puede ser nulo");
-        return new ProfesionalDTO(
-                profesional.getId(),
-                profesional.getNombre(),
-                profesional.getNombreUsuario(),
-                profesional.getProfesion(),
-                profesional.getTipoTerapia(),
-                profesional.getValorPorTerapia()
-        );
+        ProfesionalDTO dto = new ProfesionalDTO();
+        dto.setId(profesional.getId());
+        dto.setNombre(profesional.getNombre());
+        dto.setApellido(profesional.getApellido());
+        dto.setNombreUsuario(profesional.getNombreUsuario());
+        // No establecer password por seguridad
+        dto.setProfesion(profesional.getProfesion());
+        dto.setTipoTerapia(profesional.getTipoTerapia());
+        dto.setActivo(profesional.getActivo());
+        return dto;
     }
 
     private Profesional convertToEntity(ProfesionalDTO profesionalDTO) {
         Profesional profesional = new Profesional();
         profesional.setNombre(profesionalDTO.getNombre());
+        profesional.setApellido(profesionalDTO.getApellido());
         profesional.setNombreUsuario(profesionalDTO.getNombreUsuario());
+        profesional.setPassword(profesionalDTO.getPassword());
         profesional.setProfesion(profesionalDTO.getProfesion());
         profesional.setTipoTerapia(profesionalDTO.getTipoTerapia());
-        profesional.setValorPorTerapia(profesionalDTO.getValorPorTerapia());
+        profesional.setActivo(profesionalDTO.getActivo() != null ? profesionalDTO.getActivo() : true);
         return profesional;
     }
 }

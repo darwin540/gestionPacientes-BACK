@@ -2,10 +2,7 @@ package com.gestionpacientes.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +19,20 @@ public class Profesional {
     @Column(nullable = false)
     private String nombre;
 
+    @NotBlank(message = "El apellido es obligatorio")
+    @Column(nullable = false)
+    private String apellido;
+
     @NotBlank(message = "El nombre de usuario es obligatorio")
     @Column(name = "nombre_usuario", unique = true, nullable = false)
     private String nombreUsuario;
+
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Column(nullable = false)
+    private String password;
+
+    @Column(name = "activo", nullable = false)
+    private Boolean activo = true;
 
     @NotBlank(message = "La profesión es obligatoria")
     @Column(nullable = false)
@@ -33,11 +41,6 @@ public class Profesional {
     @NotBlank(message = "El tipo de terapia es obligatorio")
     @Column(name = "tipo_terapia", nullable = false)
     private String tipoTerapia;
-
-    @NotNull(message = "El valor por terapia es obligatorio")
-    @Positive(message = "El valor por terapia debe ser positivo")
-    @Column(name = "valor_por_terapia", nullable = false, precision = 10, scale = 2)
-    private BigDecimal valorPorTerapia;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -63,12 +66,14 @@ public class Profesional {
     public Profesional() {
     }
 
-    public Profesional(String nombre, String nombreUsuario, String profesion, String tipoTerapia, BigDecimal valorPorTerapia) {
+    public Profesional(String nombre, String apellido, String nombreUsuario, String password, String profesion, String tipoTerapia) {
         this.nombre = nombre;
+        this.apellido = apellido;
         this.nombreUsuario = nombreUsuario;
+        this.password = password;
         this.profesion = profesion;
         this.tipoTerapia = tipoTerapia;
-        this.valorPorTerapia = valorPorTerapia;
+        this.activo = true;
     }
 
     // Getters y Setters
@@ -86,6 +91,14 @@ public class Profesional {
 
     public void setNombre(String nombre) {
         this.nombre = nombre;
+    }
+
+    public String getApellido() {
+        return apellido;
+    }
+
+    public void setApellido(String apellido) {
+        this.apellido = apellido;
     }
 
     public String getNombreUsuario() {
@@ -112,12 +125,20 @@ public class Profesional {
         this.tipoTerapia = tipoTerapia;
     }
 
-    public BigDecimal getValorPorTerapia() {
-        return valorPorTerapia;
+    public String getPassword() {
+        return password;
     }
 
-    public void setValorPorTerapia(BigDecimal valorPorTerapia) {
-        this.valorPorTerapia = valorPorTerapia;
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Boolean getActivo() {
+        return activo;
+    }
+
+    public void setActivo(Boolean activo) {
+        this.activo = activo;
     }
 
     public LocalDateTime getCreatedAt() {

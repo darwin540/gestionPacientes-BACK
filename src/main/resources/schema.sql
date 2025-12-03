@@ -50,14 +50,15 @@ CREATE TABLE IF NOT EXISTS user_roles (
 CREATE TABLE IF NOT EXISTS profesionales (
     id BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
     nombre_usuario VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
     profesion VARCHAR(100) NOT NULL,
     tipo_terapia VARCHAR(100) NOT NULL,
-    valor_por_terapia DECIMAL(10, 2) NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
-    CONSTRAINT uk_profesional_nombre_usuario UNIQUE (nombre_usuario),
-    CONSTRAINT ck_valor_terapia_positivo CHECK (valor_por_terapia >= 0)
+    CONSTRAINT uk_profesional_nombre_usuario UNIQUE (nombre_usuario)
 );
 
 -- =====================================================
