@@ -51,7 +51,9 @@ public class TipoDocumentoService {
 
         TipoDocumento tipoDocumento = convertToEntity(tipoDocumentoDTO);
         TipoDocumento savedTipoDocumento = tipoDocumentoRepository.save(tipoDocumento);
-        Objects.requireNonNull(savedTipoDocumento, "Error al guardar el tipo de documento");
+        if (savedTipoDocumento == null) {
+            throw new RuntimeException("Error al guardar el tipo de documento");
+        }
         return convertToDTO(savedTipoDocumento);
     }
 
@@ -109,4 +111,6 @@ public class TipoDocumentoService {
         return tipoDocumento;
     }
 }
+
+
 

@@ -53,11 +53,10 @@ public class PacienteController {
             @RequestParam(required = false) String nombre,
             @RequestParam(required = false) String apellido) {
         
-        // Buscar por documento si se proporciona
+        // Buscar por documento (búsqueda parcial) si se proporciona
         if (documento != null && !documento.trim().isEmpty()) {
-            return pacienteService.findByNumeroDocumentoOptional(documento.trim())
-                    .map(p -> ResponseEntity.ok(p))
-                    .orElse(ResponseEntity.notFound().build());
+            List<PacienteDTO> pacientes = pacienteService.searchByNumeroDocumentoContaining(documento.trim());
+            return ResponseEntity.ok(pacientes);
         }
         
         // Buscar por nombre y apellido
@@ -67,6 +66,14 @@ public class PacienteController {
         }
         
         return ResponseEntity.badRequest().body("Debe proporcionar documento, nombre o apellido para buscar");
+    }
+
+    @GetMapping("/suggestions")
+    public ResponseEntity<List<PacienteDTO>> getSuggestions(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "10") int limit) {
+        List<PacienteDTO> suggestions = pacienteService.getSuggestions(query, limit);
+        return ResponseEntity.ok(suggestions);
     }
 
     @PostMapping

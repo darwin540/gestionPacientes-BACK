@@ -174,12 +174,22 @@ CREATE INDEX IF NOT EXISTS idx_servicios_departamentos_activo ON servicios_depar
 CREATE INDEX IF NOT EXISTS idx_pacientes_numero_documento ON pacientes(numero_documento);
 CREATE INDEX IF NOT EXISTS idx_pacientes_tipo_documento_id ON pacientes(tipo_documento_id);
 CREATE INDEX IF NOT EXISTS idx_pacientes_nombre_apellido ON pacientes(nombre, apellido);
+CREATE INDEX IF NOT EXISTS idx_pacientes_nombre ON pacientes(nombre);
+CREATE INDEX IF NOT EXISTS idx_pacientes_apellido ON pacientes(apellido);
+CREATE INDEX IF NOT EXISTS idx_pacientes_nombre_lower ON pacientes(LOWER(nombre));
+CREATE INDEX IF NOT EXISTS idx_pacientes_apellido_lower ON pacientes(LOWER(apellido));
+CREATE INDEX IF NOT EXISTS idx_pacientes_documento_lower ON pacientes(LOWER(numero_documento));
 
 -- Índices para terapias
 CREATE INDEX IF NOT EXISTS idx_terapias_paciente_id ON terapias(paciente_id);
 CREATE INDEX IF NOT EXISTS idx_terapias_profesional_id ON terapias(profesional_id);
 CREATE INDEX IF NOT EXISTS idx_terapias_servicio_departamento_id ON terapias(servicio_departamento_id);
 CREATE INDEX IF NOT EXISTS idx_terapias_fecha ON terapias(fecha);
+CREATE INDEX IF NOT EXISTS idx_terapias_paciente_profesional ON terapias(paciente_id, profesional_id);
+
+-- Índices compuestos para búsquedas optimizadas
+CREATE INDEX IF NOT EXISTS idx_pacientes_nombre_apellido_compuesto ON pacientes(nombre, apellido);
+CREATE INDEX IF NOT EXISTS idx_pacientes_documento_nombre ON pacientes(numero_documento, nombre);
 
 -- =====================================================
 -- DATOS INICIALES: Roles del sistema

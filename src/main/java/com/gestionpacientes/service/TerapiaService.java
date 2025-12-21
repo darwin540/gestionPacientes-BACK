@@ -1,5 +1,6 @@
 package com.gestionpacientes.service;
 
+import com.gestionpacientes.dto.CrearTerapiasRequest;
 import com.gestionpacientes.dto.TerapiaDTO;
 import com.gestionpacientes.exception.ResourceNotFoundException;
 import com.gestionpacientes.model.Paciente;
@@ -55,6 +56,11 @@ public class TerapiaService {
         return terapiaRepository.findByPacienteId(pacienteId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<Long> findDistinctProfesionalIdsByPacienteId(Long pacienteId) {
+        return terapiaRepository.findDistinctProfesionalIdsByPacienteId(pacienteId);
     }
 
     public List<TerapiaDTO> findByProfesionalId(Long profesionalId) {
@@ -134,6 +140,50 @@ public class TerapiaService {
         terapiaRepository.deleteById(id);
     }
 
+    public List<TerapiaDTO> createMultiple(Long pacienteId, Long profesionalId, 
+                                           List<CrearTerapiasRequest.DiaAtencion> diasAtencion) {
+        Objects.requireNonNull(pacienteId, "El ID del paciente no puede ser nulo");
+        Objects.requireNonNull(profesionalId, "El ID del profesional no puede ser nulo");
+        Objects.requireNonNull(diasAtencion, "Los días de atención no pueden ser nulos");
+        
+        if (diasAtencion.isEmpty()) {
+            throw new IllegalArgumentException("Debe proporcionar al menos un día de atención");
+        }
+
+        // Verificar que el paciente existe
+        Paciente paciente = pacienteRepository.findById(pacienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente", pacienteId));
+
+        // Verificar que el profesional existe
+        Profesional profesional = profesionalRepository.findById(profesionalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Profesional", profesionalId));
+
+        List<Terapia> terapias = new java.util.ArrayList<>();
+        
+        for (CrearTerapiasRequest.DiaAtencion dia : diasAtencion) {
+            // Verificar que el servicio/departamento existe
+            Long servicioId = Objects.requireNonNull(dia.getServicioDepartamentoId(), "El ID del servicio/departamento no puede ser nulo");
+            ServicioDepartamento servicioDepartamento = servicioDepartamentoRepository.findById(servicioId)
+                    .orElseThrow(() -> new ResourceNotFoundException("ServicioDepartamento", servicioId));
+
+            // Crear múltiples terapias para este día según el número especificado
+            for (int i = 0; i < dia.getNumeroTerapias(); i++) {
+                Terapia terapia = new Terapia();
+                terapia.setPaciente(paciente);
+                terapia.setProfesional(profesional);
+                // Convertir LocalDate a LocalDateTime (usar hora del día, por ejemplo 10:00 AM)
+                terapia.setFecha(dia.getFecha().atTime(10, 0).plusHours(i));
+                terapia.setServicioDepartamento(servicioDepartamento);
+                terapias.add(terapia);
+            }
+        }
+
+        List<Terapia> savedTerapias = terapiaRepository.saveAll(terapias);
+        return savedTerapias.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     // Métodos de conversión
     private TerapiaDTO convertToDTO(Terapia terapia) {
         Objects.requireNonNull(terapia, "La terapia no puede ser nula");
@@ -159,4 +209,3 @@ public class TerapiaService {
         return dto;
     }
 }
-

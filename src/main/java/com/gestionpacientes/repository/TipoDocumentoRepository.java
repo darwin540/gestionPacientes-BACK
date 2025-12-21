@@ -18,3 +18,5 @@ public interface TipoDocumentoRepository extends JpaRepository<TipoDocumento, Lo
     
 }
 
+
+

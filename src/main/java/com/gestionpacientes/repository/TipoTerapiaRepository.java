@@ -14,3 +14,5 @@ public interface TipoTerapiaRepository extends JpaRepository<TipoTerapia, Long> 
     List<TipoTerapia> findByActivoTrue();
 }
 
+
+

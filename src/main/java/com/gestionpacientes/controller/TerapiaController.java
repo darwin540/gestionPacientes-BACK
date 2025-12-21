@@ -1,5 +1,6 @@
 package com.gestionpacientes.controller;
 
+import com.gestionpacientes.dto.CrearTerapiasRequest;
 import com.gestionpacientes.dto.TerapiaDTO;
 import com.gestionpacientes.service.TerapiaService;
 import jakarta.validation.Valid;
@@ -46,6 +47,12 @@ public class TerapiaController {
         return ResponseEntity.ok(terapias);
     }
 
+    @GetMapping("/paciente/{pacienteId}/profesionales")
+    public ResponseEntity<List<Long>> getProfesionalesByPaciente(@PathVariable Long pacienteId) {
+        List<Long> profesionalIds = terapiaService.findDistinctProfesionalIdsByPacienteId(pacienteId);
+        return ResponseEntity.ok(profesionalIds);
+    }
+
     @PostMapping
     public ResponseEntity<TerapiaDTO> createTerapia(@Valid @RequestBody TerapiaDTO terapiaDTO) {
         TerapiaDTO createdTerapia = terapiaService.create(terapiaDTO);
@@ -63,6 +70,14 @@ public class TerapiaController {
         terapiaService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/multiple")
+    public ResponseEntity<List<TerapiaDTO>> createMultipleTerapias(@Valid @RequestBody CrearTerapiasRequest request) {
+        List<TerapiaDTO> createdTerapias = terapiaService.createMultiple(
+            request.getPacienteId(),
+            request.getProfesionalId(),
+            request.getDiasAtencion()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdTerapias);
+    }
 }
-
-

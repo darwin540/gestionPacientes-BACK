@@ -9,6 +9,7 @@ import com.gestionpacientes.model.Profesional;
 import com.gestionpacientes.model.Terapia;
 import com.gestionpacientes.model.TipoDocumento;
 import com.gestionpacientes.repository.PacienteRepository;
+import com.gestionpacientes.repository.PacienteSearchRepository;
 import com.gestionpacientes.repository.ProfesionalRepository;
 import com.gestionpacientes.repository.TerapiaRepository;
 import com.gestionpacientes.repository.TipoDocumentoRepository;
@@ -24,16 +25,19 @@ import java.util.stream.Collectors;
 public class PacienteService {
 
     private final PacienteRepository pacienteRepository;
+    private final PacienteSearchRepository pacienteSearchRepository;
     private final TipoDocumentoRepository tipoDocumentoRepository;
     private final TerapiaRepository terapiaRepository;
     private final ProfesionalRepository profesionalRepository;
 
     @Autowired
-    public PacienteService(PacienteRepository pacienteRepository, 
+    public PacienteService(PacienteRepository pacienteRepository,
+                          PacienteSearchRepository pacienteSearchRepository,
                           TipoDocumentoRepository tipoDocumentoRepository,
                           TerapiaRepository terapiaRepository,
                           ProfesionalRepository profesionalRepository) {
         this.pacienteRepository = pacienteRepository;
+        this.pacienteSearchRepository = pacienteSearchRepository;
         this.tipoDocumentoRepository = tipoDocumentoRepository;
         this.terapiaRepository = terapiaRepository;
         this.profesionalRepository = profesionalRepository;
@@ -45,16 +49,31 @@ public class PacienteService {
                 .collect(Collectors.toList());
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public PacienteDTO findById(Long id) {
         Objects.requireNonNull(id, "El ID no puede ser nulo");
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Paciente", id));
+        // Forzar carga del tipoDocumento si es LAZY
+        if (paciente.getTipoDocumento() == null) {
+            paciente.getTipoDocumento(); // Esto activará la carga lazy
+        }
         return convertToDTO(paciente);
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public PacienteDTO findByNumeroDocumento(String numeroDocumento) {
-        Paciente paciente = pacienteRepository.findByNumeroDocumento(numeroDocumento)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente con número de documento: " + numeroDocumento + " no encontrado"));
+        // Usar consulta optimizada con JOIN FETCH
+        Paciente paciente = pacienteSearchRepository.findByNumeroDocumentoWithTipoDocumento(numeroDocumento)
+                .orElseGet(() -> {
+                    // Fallback a consulta normal si no existe la optimizada
+                    return pacienteRepository.findByNumeroDocumento(numeroDocumento)
+                            .orElseThrow(() -> new ResourceNotFoundException("Paciente con número de documento: " + numeroDocumento + " no encontrado"));
+                });
+        // Asegurar que tipoDocumento esté cargado
+        if (paciente.getTipoDocumento() == null) {
+            paciente.getTipoDocumento(); // Activar carga lazy
+        }
         return convertToDTO(paciente);
     }
 
@@ -63,21 +82,78 @@ public class PacienteService {
                 .map(this::convertToDTO);
     }
 
-    public List<PacienteDTO> searchByNombreAndApellido(String nombre, String apellido) {
-        if (nombre != null && !nombre.trim().isEmpty() && apellido != null && !apellido.trim().isEmpty()) {
-            return pacienteRepository.findByNombreAndApellido(nombre.trim(), apellido.trim()).stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
-        } else if (nombre != null && !nombre.trim().isEmpty()) {
-            return pacienteRepository.findByNombreContainingIgnoreCase(nombre.trim()).stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
-        } else if (apellido != null && !apellido.trim().isEmpty()) {
-            return pacienteRepository.findByApellidoContainingIgnoreCase(apellido.trim()).stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<PacienteDTO> searchByNumeroDocumentoContaining(String numeroDocumento) {
+        if (numeroDocumento == null || numeroDocumento.trim().isEmpty()) {
+            return Collections.emptyList();
         }
-        return Collections.emptyList();
+        return pacienteSearchRepository.findByNumeroDocumentoContainingIgnoreCase(numeroDocumento.trim()).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<PacienteDTO> searchByNombreAndApellido(String nombre, String apellido) {
+        List<Paciente> resultados;
+        
+        if (nombre != null && !nombre.trim().isEmpty() && apellido != null && !apellido.trim().isEmpty()) {
+            resultados = pacienteSearchRepository.findByNombreAndApellido(nombre.trim(), apellido.trim());
+        } else if (nombre != null && !nombre.trim().isEmpty()) {
+            resultados = pacienteSearchRepository.findByNombreContainingIgnoreCase(nombre.trim());
+        } else if (apellido != null && !apellido.trim().isEmpty()) {
+            resultados = pacienteSearchRepository.findByApellidoContainingIgnoreCase(apellido.trim());
+        } else {
+            return Collections.emptyList();
+        }
+        
+        // Limitar resultados para mejorar rendimiento
+        if (resultados.size() > 100) {
+            resultados = resultados.subList(0, 100);
+        }
+        
+        return resultados.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<PacienteDTO> getSuggestions(String query, int limit) {
+        if (query == null || query.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        String searchQuery = query.trim();
+        
+        // Usar consulta optimizada que busca en una sola query
+        List<Paciente> resultados = pacienteSearchRepository.findSuggestionsOptimized(searchQuery, Math.min(limit, 20));
+        
+        // Si hay resultados, cargar tipoDocumento en batch para evitar N+1 queries
+        if (!resultados.isEmpty()) {
+            List<Long> ids = resultados.stream()
+                    .map(Paciente::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            
+            if (!ids.isEmpty()) {
+                // Cargar todos los pacientes con tipoDocumento en una sola query
+                List<Paciente> pacientesCompletos = pacienteSearchRepository.findByIdsWithTipoDocumento(ids);
+                // Crear un mapa para acceso rápido
+                java.util.Map<Long, Paciente> mapaPacientes = pacientesCompletos.stream()
+                        .collect(Collectors.toMap(Paciente::getId, p -> p));
+                
+                // Actualizar resultados con tipoDocumento cargado
+                resultados.forEach(p -> {
+                    Paciente completo = mapaPacientes.get(p.getId());
+                    if (completo != null && completo.getTipoDocumento() != null) {
+                        p.setTipoDocumento(completo.getTipoDocumento());
+                    }
+                });
+            }
+        }
+        
+        return resultados.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     public PacienteDTO create(PacienteDTO pacienteDTO) {
