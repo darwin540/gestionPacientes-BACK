@@ -1,27 +1,24 @@
 package com.gestionpacientes.controller;
 
-import com.gestionpacientes.dto.AuthResponse;
-import com.gestionpacientes.dto.LoginRequest;
+import com.gestionpacientes.dto.LoginRequestDTO;
+import com.gestionpacientes.dto.LoginResponseDTO;
 import com.gestionpacientes.service.AuthService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-        AuthResponse response = authService.login(loginRequest);
+    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO loginRequest) {
+        LoginResponseDTO response = authService.login(loginRequest);
         return ResponseEntity.ok(response);
     }
 }
-
-
 

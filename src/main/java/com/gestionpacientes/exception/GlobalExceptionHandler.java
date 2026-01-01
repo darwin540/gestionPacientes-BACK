@@ -2,13 +2,12 @@ package com.gestionpacientes.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,21 +15,23 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleResourceNotFoundException(ResourceNotFoundException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("mensaje", ex.getMessage());
-        response.put("error", "Recurso no encontrado");
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .mensaje(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<Map<String, Object>> handleDuplicateResourceException(DuplicateResourceException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("mensaje", ex.getMessage());
-        response.put("error", "Recurso duplicado");
-        response.put("status", HttpStatus.CONFLICT.value());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    public ResponseEntity<ErrorResponse> handleDuplicateResourceException(DuplicateResourceException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .mensaje(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -45,53 +46,20 @@ public class GlobalExceptionHandler {
         Map<String, Object> response = new HashMap<>();
         response.put("mensaje", "Error de validación");
         response.put("errores", errors);
+        response.put("timestamp", LocalDateTime.now());
         response.put("status", HttpStatus.BAD_REQUEST.value());
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(BadCredentialsException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("mensaje", "Usuario o contraseña incorrectos");
-        response.put("error", "Credenciales inválidas");
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("mensaje", "Error de autenticación: " + ex.getMessage());
-        response.put("error", "Error de autenticación");
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGlobalException(Exception ex) {
-        Map<String, Object> response = new HashMap<>();
-        
-        // Obtener el mensaje de error más descriptivo
-        String errorMessage = ex.getMessage();
-        if (errorMessage == null || errorMessage.isEmpty()) {
-            errorMessage = ex.getClass().getSimpleName();
-        }
-        
-        // Si es una excepción de base de datos, incluir más detalles
-        if (ex.getCause() != null) {
-            String causeMessage = ex.getCause().getMessage();
-            if (causeMessage != null && !causeMessage.isEmpty()) {
-                errorMessage += ": " + causeMessage;
-            }
-        }
-        
-        response.put("mensaje", "Error interno del servidor: " + errorMessage);
-        response.put("error", errorMessage);
-        response.put("tipo", ex.getClass().getSimpleName());
-        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+        ErrorResponse error = ErrorResponse.builder()
+                .mensaje("Error interno del servidor: " + ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
-
 

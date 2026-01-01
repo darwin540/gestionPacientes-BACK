@@ -1,12 +1,10 @@
 package com.gestionpacientes.config;
 
 import com.gestionpacientes.security.JwtAuthenticationFilter;
-import com.gestionpacientes.security.CustomUserDetailsService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,19 +14,52 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Autowired
-    public SecurityConfig(CustomUserDetailsService customUserDetailsService, JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.customUserDetailsService = customUserDetailsService;
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/profesionales/**").permitAll() // Permitir todos los endpoints de profesionales sin autenticación
+                        .requestMatchers("/api/tipos-terapia/**").permitAll() // Temporal: permitir tipos de terapia sin auth
+                        .requestMatchers("/api/servicios/**").permitAll() // Temporal: permitir servicios sin auth
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> 
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173", "http://localhost:4200", "http://localhost:8080"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean
@@ -37,50 +68,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(customUserDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
-        return authConfig.getAuthenticationManager();
-    }
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                // Permitir acceso público al login
-                .requestMatchers("/api/auth/**").permitAll()
-                
-                // Endpoints que requieren rol ADMIN
-                .requestMatchers("/api/profesionales/**").hasRole("ADMIN")
-                .requestMatchers("/api/tipos-documento/activos").permitAll() // Permitir ver tipos activos sin autenticación
-                .requestMatchers("/api/tipos-documento/**").hasRole("ADMIN") // Solo ADMIN puede gestionar tipos de documento
-                .requestMatchers("/api/servicios-departamentos/activos").permitAll() // Permitir ver servicios activos sin autenticación
-                .requestMatchers("/api/servicios-departamentos/**").hasRole("ADMIN") // Solo ADMIN puede gestionar servicios/departamentos
-                .requestMatchers("/api/tipos-terapia/activos").permitAll() // Permitir ver tipos de terapia activos sin autenticación
-                .requestMatchers("/api/tipos-terapia/**").hasRole("ADMIN") // Solo ADMIN puede gestionar tipos de terapia
-                .requestMatchers("/api/pacientes/**").hasAnyRole("ADMIN", "PROFESIONAL")
-                .requestMatchers("/api/terapias/**").hasAnyRole("ADMIN", "PROFESIONAL")
-                
-                // Cualquier otra solicitud requiere autenticación
-                .anyRequest().authenticated()
-            )
-            .httpBasic(httpBasic -> httpBasic.disable())
-            .formLogin(formLogin -> formLogin.disable())
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-        http.authenticationProvider(authenticationProvider());
-
-        return http.build();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 }
 

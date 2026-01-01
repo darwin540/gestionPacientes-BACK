@@ -1,234 +1,205 @@
--- =====================================================
--- Script SQL para crear la base de datos completa
--- Sistema de Gestión de Pacientes
--- =====================================================
+-- Script de creación de tablas para el sistema de gestión de pacientes
+-- Base de datos: PostgreSQL
+-- Esquema: public
+-- NOTA: Este script solo crea las tablas si no existen, NO borra datos existentes
 
--- Crear la base de datos (ejecutar como superusuario)
--- CREATE DATABASE gestion_pacientes;
--- \c gestion_pacientes;
 
--- =====================================================
--- TABLA: roles
--- =====================================================
-CREATE TABLE IF NOT EXISTS roles (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description VARCHAR(255),
-    CONSTRAINT uk_role_name UNIQUE (name)
-);
+-- Eliminar tablas si existen (en orden inverso por dependencias)
+-- DROP TABLE IF EXISTS registros_terapia_servicio CASCADE;
+-- DROP TABLE IF EXISTS profesionales_pacientes CASCADE;
+-- DROP TABLE IF EXISTS profesionales_tipos_terapia CASCADE;
+-- DROP TABLE IF EXISTS servicios CASCADE;
+-- DROP TABLE IF EXISTS tipos_terapia CASCADE;
+-- DROP TABLE IF EXISTS pacientes CASCADE;
+-- DROP TABLE IF EXISTS profesionales CASCADE;
 
--- =====================================================
--- TABLA: users (Usuarios del sistema)
--- =====================================================
-CREATE TABLE IF NOT EXISTS users (
-    id BIGSERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    nombre_completo VARCHAR(100),
-    activo BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    CONSTRAINT uk_user_username UNIQUE (username),
-    CONSTRAINT uk_user_email UNIQUE (email)
-);
-
--- =====================================================
--- TABLA: user_roles (Relación muchos a muchos entre usuarios y roles)
--- =====================================================
-CREATE TABLE IF NOT EXISTS user_roles (
-    user_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    PRIMARY KEY (user_id, role_id),
-    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
-);
-
--- =====================================================
+-- ============================================
 -- TABLA: profesionales
--- =====================================================
+-- ============================================
 CREATE TABLE IF NOT EXISTS profesionales (
     id BIGSERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    apellido VARCHAR(100) NOT NULL,
-    nombre_usuario VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
+    nombre VARCHAR(200) NOT NULL,
     profesion VARCHAR(100) NOT NULL,
-    tipo_terapia VARCHAR(100) NOT NULL,
-    activo BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    CONSTRAINT uk_profesional_nombre_usuario UNIQUE (nombre_usuario)
+    numero_cuenta_banco VARCHAR(50) NOT NULL,
+    nombre_banco VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP
 );
 
--- Eliminar columna valor_por_terapia si existe (migración)
-DO $$ 
-BEGIN
-    IF EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_name = 'profesionales' 
-        AND column_name = 'valor_por_terapia'
-    ) THEN
-        ALTER TABLE profesionales DROP COLUMN valor_por_terapia;
-    END IF;
-END $$;
+-- Índices para profesionales (solo si no existen)
+CREATE INDEX IF NOT EXISTS idx_profesionales_email ON profesionales(email);
+CREATE INDEX IF NOT EXISTS idx_profesionales_username ON profesionales(username);
 
--- =====================================================
--- TABLA: tipos_documento
--- =====================================================
-CREATE TABLE IF NOT EXISTS tipos_documento (
-    id BIGSERIAL PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL UNIQUE,
-    descripcion VARCHAR(255),
-    activo BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    CONSTRAINT uk_tipo_documento_nombre UNIQUE (nombre)
-);
-
--- =====================================================
--- TABLA: servicios_departamentos
--- =====================================================
-CREATE TABLE IF NOT EXISTS servicios_departamentos (
-    id BIGSERIAL PRIMARY KEY,
-    abreviacion VARCHAR(20) NOT NULL UNIQUE,
-    nombre VARCHAR(100) NOT NULL UNIQUE,
-    activo BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    CONSTRAINT uk_servicio_abreviacion UNIQUE (abreviacion),
-    CONSTRAINT uk_servicio_nombre UNIQUE (nombre)
-);
-
--- =====================================================
+-- ============================================
 -- TABLA: pacientes
--- =====================================================
+-- ============================================
 CREATE TABLE IF NOT EXISTS pacientes (
     id BIGSERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
-    tipo_documento_id BIGINT NOT NULL,
-    numero_documento VARCHAR(50) NOT NULL UNIQUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    CONSTRAINT uk_paciente_numero_documento UNIQUE (numero_documento),
-    CONSTRAINT fk_paciente_tipo_documento FOREIGN KEY (tipo_documento_id) REFERENCES tipos_documento(id) ON DELETE RESTRICT
+    tipo_documento VARCHAR(2) NOT NULL CHECK (tipo_documento IN ('CC', 'TI')),
+    documento VARCHAR(50) NOT NULL,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP
 );
 
--- =====================================================
+-- Índices para pacientes (solo si no existen)
+CREATE INDEX IF NOT EXISTS idx_pacientes_tipo_documento ON pacientes(tipo_documento);
+CREATE INDEX IF NOT EXISTS idx_pacientes_documento ON pacientes(documento);
+CREATE INDEX IF NOT EXISTS idx_pacientes_tipo_doc_doc ON pacientes(tipo_documento, documento);
+
+-- ============================================
 -- TABLA: tipos_terapia
--- =====================================================
+-- ============================================
 CREATE TABLE IF NOT EXISTS tipos_terapia (
     id BIGSERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL UNIQUE,
-    valor_unitario DECIMAL(10, 2) NOT NULL,
-    activo BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    CONSTRAINT uk_tipo_terapia_nombre UNIQUE (nombre),
-    CONSTRAINT ck_valor_unitario_positivo CHECK (valor_unitario >= 0)
+    nombre VARCHAR(200) NOT NULL UNIQUE,
+    valor_unitario DECIMAL(10,2) NOT NULL CHECK (valor_unitario > 0),
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP
 );
 
--- =====================================================
--- TABLA: terapias
--- =====================================================
-CREATE TABLE IF NOT EXISTS terapias (
+-- Índices para tipos_terapia (solo si no existen)
+CREATE INDEX IF NOT EXISTS idx_tipos_terapia_nombre ON tipos_terapia(nombre);
+
+-- ============================================
+-- TABLA: servicios
+-- ============================================
+CREATE TABLE IF NOT EXISTS servicios (
+    id BIGSERIAL PRIMARY KEY,
+    nombre_completo VARCHAR(200) NOT NULL,
+    abreviatura VARCHAR(20) NOT NULL,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP
+);
+
+-- Índices para servicios (solo si no existen)
+CREATE INDEX IF NOT EXISTS idx_servicios_abreviatura ON servicios(abreviatura);
+
+-- ============================================
+-- TABLA INTERMEDIA: profesionales_tipos_terapia
+-- Relación muchos a muchos entre profesionales y tipos_terapia
+-- ============================================
+CREATE TABLE IF NOT EXISTS profesionales_tipos_terapia (
+    profesional_id BIGINT NOT NULL,
+    tipo_terapia_id BIGINT NOT NULL,
+    PRIMARY KEY (profesional_id, tipo_terapia_id),
+    CONSTRAINT fk_profesional_tipo_terapia_profesional 
+        FOREIGN KEY (profesional_id) 
+        REFERENCES profesionales(id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_profesional_tipo_terapia_tipo_terapia 
+        FOREIGN KEY (tipo_terapia_id) 
+        REFERENCES tipos_terapia(id) 
+        ON DELETE CASCADE
+);
+
+-- Índices para profesionales_tipos_terapia (solo si no existen)
+CREATE INDEX IF NOT EXISTS idx_profesionales_tipos_terapia_profesional ON profesionales_tipos_terapia(profesional_id);
+CREATE INDEX IF NOT EXISTS idx_profesionales_tipos_terapia_tipo_terapia ON profesionales_tipos_terapia(tipo_terapia_id);
+
+-- ============================================
+-- TABLA: profesionales_pacientes
+-- Relación muchos a muchos entre profesionales y pacientes
+-- Incluye información sobre quién creó la relación
+-- ============================================
+CREATE TABLE IF NOT EXISTS profesionales_pacientes (
+    id BIGSERIAL PRIMARY KEY,
+    profesional_id BIGINT NOT NULL,
+    paciente_id BIGINT NOT NULL,
+    creado_por_profesional_id BIGINT NOT NULL,
+    fecha_asignacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_profesional_paciente_profesional 
+        FOREIGN KEY (profesional_id) 
+        REFERENCES profesionales(id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_profesional_paciente_paciente 
+        FOREIGN KEY (paciente_id) 
+        REFERENCES pacientes(id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_profesional_paciente_creado_por 
+        FOREIGN KEY (creado_por_profesional_id) 
+        REFERENCES profesionales(id) 
+        ON DELETE RESTRICT,
+    CONSTRAINT uk_profesional_paciente 
+        UNIQUE (profesional_id, paciente_id)
+);
+
+-- Índices para profesionales_pacientes (solo si no existen)
+CREATE INDEX IF NOT EXISTS idx_profesionales_pacientes_profesional ON profesionales_pacientes(profesional_id);
+CREATE INDEX IF NOT EXISTS idx_profesionales_pacientes_paciente ON profesionales_pacientes(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_profesionales_pacientes_creado_por ON profesionales_pacientes(creado_por_profesional_id);
+
+-- ============================================
+-- COMENTARIOS EN TABLAS Y COLUMNAS
+-- ============================================
+COMMENT ON TABLE profesionales IS 'Tabla que almacena la información de los profesionales del sistema';
+COMMENT ON COLUMN profesionales.email IS 'Email del profesional';
+COMMENT ON COLUMN profesionales.username IS 'Nombre de usuario único usado para autenticación';
+COMMENT ON COLUMN profesionales.password IS 'Contraseña encriptada (BCrypt)';
+
+COMMENT ON TABLE pacientes IS 'Tabla que almacena la información de los pacientes';
+COMMENT ON COLUMN pacientes.tipo_documento IS 'Tipo de documento: CC (Cédula de Ciudadanía) o TI (Tarjeta de Identidad)';
+
+COMMENT ON TABLE tipos_terapia IS 'Tabla que almacena los tipos de terapia disponibles';
+COMMENT ON COLUMN tipos_terapia.valor_unitario IS 'Valor unitario del tipo de terapia en formato decimal';
+
+COMMENT ON TABLE servicios IS 'Tabla que almacena los servicios disponibles';
+
+COMMENT ON TABLE profesionales_tipos_terapia IS 'Tabla intermedia para la relación muchos a muchos entre profesionales y tipos de terapia';
+
+COMMENT ON TABLE profesionales_pacientes IS 'Tabla intermedia para la relación muchos a muchos entre profesionales y pacientes';
+COMMENT ON COLUMN profesionales_pacientes.creado_por_profesional_id IS 'ID del profesional que creó esta relación (puede ser diferente al profesional_id si se asignó a otro profesional)';
+
+-- ============================================
+-- TABLA: registros_terapia_servicio
+-- Registros de terapias y servicios realizados a pacientes por profesionales
+-- ============================================
+CREATE TABLE IF NOT EXISTS registros_terapia_servicio (
     id BIGSERIAL PRIMARY KEY,
     paciente_id BIGINT NOT NULL,
     profesional_id BIGINT NOT NULL,
-    fecha TIMESTAMP NOT NULL,
-    servicio_departamento_id BIGINT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    CONSTRAINT fk_terapia_paciente FOREIGN KEY (paciente_id) REFERENCES pacientes(id) ON DELETE CASCADE,
-    CONSTRAINT fk_terapia_profesional FOREIGN KEY (profesional_id) REFERENCES profesionales(id) ON DELETE CASCADE,
-    CONSTRAINT fk_terapia_servicio_departamento FOREIGN KEY (servicio_departamento_id) REFERENCES servicios_departamentos(id) ON DELETE RESTRICT
+    tipo_terapia_id BIGINT NOT NULL,
+    servicio_id BIGINT NOT NULL,
+    fecha DATE NOT NULL,
+    numero_sesiones INTEGER NOT NULL CHECK (numero_sesiones >= 1 AND numero_sesiones <= 2),
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP,
+    CONSTRAINT fk_registro_paciente 
+        FOREIGN KEY (paciente_id) 
+        REFERENCES pacientes(id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_registro_profesional 
+        FOREIGN KEY (profesional_id) 
+        REFERENCES profesionales(id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_registro_tipo_terapia 
+        FOREIGN KEY (tipo_terapia_id) 
+        REFERENCES tipos_terapia(id) 
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_registro_servicio 
+        FOREIGN KEY (servicio_id) 
+        REFERENCES servicios(id) 
+        ON DELETE RESTRICT,
+    CONSTRAINT uk_registro_unico 
+        UNIQUE (paciente_id, profesional_id, tipo_terapia_id, servicio_id, fecha)
 );
 
--- =====================================================
--- ÍNDICES para mejorar el rendimiento
--- =====================================================
+-- Índices para registros_terapia_servicio (solo si no existen)
+CREATE INDEX IF NOT EXISTS idx_registros_paciente ON registros_terapia_servicio(paciente_id);
+CREATE INDEX IF NOT EXISTS idx_registros_profesional ON registros_terapia_servicio(profesional_id);
+CREATE INDEX IF NOT EXISTS idx_registros_tipo_terapia ON registros_terapia_servicio(tipo_terapia_id);
+CREATE INDEX IF NOT EXISTS idx_registros_servicio ON registros_terapia_servicio(servicio_id);
+CREATE INDEX IF NOT EXISTS idx_registros_fecha ON registros_terapia_servicio(fecha);
+CREATE INDEX IF NOT EXISTS idx_registros_paciente_fecha ON registros_terapia_servicio(paciente_id, fecha);
 
--- Índices para usuarios
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_activo ON users(activo);
-
--- Índices para roles
-CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name);
-
--- Índices para profesionales
-CREATE INDEX IF NOT EXISTS idx_profesionales_nombre_usuario ON profesionales(nombre_usuario);
-
--- Índices para tipos de documento
-CREATE INDEX IF NOT EXISTS idx_tipos_documento_nombre ON tipos_documento(nombre);
-CREATE INDEX IF NOT EXISTS idx_tipos_documento_activo ON tipos_documento(activo);
-
--- Índices para servicios/departamentos
-CREATE INDEX IF NOT EXISTS idx_servicios_departamentos_abreviacion ON servicios_departamentos(abreviacion);
-CREATE INDEX IF NOT EXISTS idx_servicios_departamentos_nombre ON servicios_departamentos(nombre);
-CREATE INDEX IF NOT EXISTS idx_servicios_departamentos_activo ON servicios_departamentos(activo);
-
--- Índices para pacientes
-CREATE INDEX IF NOT EXISTS idx_pacientes_numero_documento ON pacientes(numero_documento);
-CREATE INDEX IF NOT EXISTS idx_pacientes_tipo_documento_id ON pacientes(tipo_documento_id);
-CREATE INDEX IF NOT EXISTS idx_pacientes_nombre_apellido ON pacientes(nombre, apellido);
-CREATE INDEX IF NOT EXISTS idx_pacientes_nombre ON pacientes(nombre);
-CREATE INDEX IF NOT EXISTS idx_pacientes_apellido ON pacientes(apellido);
-CREATE INDEX IF NOT EXISTS idx_pacientes_nombre_lower ON pacientes(LOWER(nombre));
-CREATE INDEX IF NOT EXISTS idx_pacientes_apellido_lower ON pacientes(LOWER(apellido));
-CREATE INDEX IF NOT EXISTS idx_pacientes_documento_lower ON pacientes(LOWER(numero_documento));
-
--- Índices para terapias
-CREATE INDEX IF NOT EXISTS idx_terapias_paciente_id ON terapias(paciente_id);
-CREATE INDEX IF NOT EXISTS idx_terapias_profesional_id ON terapias(profesional_id);
-CREATE INDEX IF NOT EXISTS idx_terapias_servicio_departamento_id ON terapias(servicio_departamento_id);
-CREATE INDEX IF NOT EXISTS idx_terapias_fecha ON terapias(fecha);
-CREATE INDEX IF NOT EXISTS idx_terapias_paciente_profesional ON terapias(paciente_id, profesional_id);
-
--- Índices compuestos para búsquedas optimizadas
-CREATE INDEX IF NOT EXISTS idx_pacientes_nombre_apellido_compuesto ON pacientes(nombre, apellido);
-CREATE INDEX IF NOT EXISTS idx_pacientes_documento_nombre ON pacientes(numero_documento, nombre);
-
--- =====================================================
--- DATOS INICIALES: Roles del sistema
--- =====================================================
-
--- Insertar roles predefinidos
-INSERT INTO roles (name, description) VALUES
-    ('ADMIN', 'Administrador del sistema con acceso completo'),
-    ('PROFESIONAL', 'Profesional de la salud que atiende pacientes')
-ON CONFLICT (name) DO NOTHING;
-
--- =====================================================
--- USUARIO ADMIN POR DEFECTO
--- =====================================================
--- Nota: La contraseña debe ser encriptada con BCrypt antes de insertar
--- Contraseña por defecto: "admin123" (debe ser cambiada en producción)
--- Hash BCrypt: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
-INSERT INTO users (username, email, password, nombre_completo, activo) VALUES
-    ('admin', 'admin@gestionpacientes.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Administrador del Sistema', true)
-ON CONFLICT (username) DO NOTHING;
-
--- Asignar rol ADMIN al usuario admin
-INSERT INTO user_roles (user_id, role_id)
-SELECT u.id, r.id
-FROM users u, roles r
-WHERE u.username = 'admin' AND r.name = 'ADMIN'
-ON CONFLICT DO NOTHING;
-
--- =====================================================
--- DATOS INICIALES: Los datos de tipos de documento, servicios/departamentos 
--- y tipos de terapia deben ser creados desde la aplicación por el administrador
--- =====================================================
-
--- =====================================================
--- COMENTARIOS FINALES
--- =====================================================
--- Este script crea todas las tablas necesarias para el sistema
--- Asegúrate de:
--- 1. Cambiar la contraseña del usuario admin después de la primera conexión
--- 2. Configurar las credenciales correctas en application.properties
--- 3. Verificar que todas las foreign keys están correctamente referenciadas
+-- Comentarios
+COMMENT ON TABLE registros_terapia_servicio IS 'Tabla que almacena los registros de terapias y servicios realizados a pacientes';
+COMMENT ON COLUMN registros_terapia_servicio.fecha IS 'Fecha específica en que se realizó la terapia/servicio';
+COMMENT ON COLUMN registros_terapia_servicio.numero_sesiones IS 'Número de sesiones del tipo de terapia realizadas en esa fecha';
+COMMENT ON COLUMN registros_terapia_servicio.fecha_creacion IS 'Fecha de creación del registro';
+COMMENT ON COLUMN registros_terapia_servicio.fecha_actualizacion IS 'Fecha de última actualización del registro';
 
