@@ -21,3 +21,4 @@ public class TipoTerapiaResponseDTO {
     private LocalDateTime fechaActualizacion;
 }
 
+

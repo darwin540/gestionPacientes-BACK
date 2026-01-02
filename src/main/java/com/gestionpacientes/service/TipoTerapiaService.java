@@ -19,3 +19,4 @@ public interface TipoTerapiaService {
     void eliminarTipoTerapia(Long id);
 }
 
+

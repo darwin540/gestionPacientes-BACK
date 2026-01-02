@@ -31,3 +31,4 @@ public class RegistroTerapiaResponseDTO {
     private LocalDateTime fechaActualizacion;
 }
 
+

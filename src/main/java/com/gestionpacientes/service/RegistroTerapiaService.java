@@ -19,3 +19,4 @@ public interface RegistroTerapiaService {
     void eliminarRegistro(Long id, Long profesionalId);
 }
 
+

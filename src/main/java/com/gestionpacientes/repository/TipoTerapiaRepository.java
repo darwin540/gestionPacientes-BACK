@@ -14,3 +14,4 @@ public interface TipoTerapiaRepository extends JpaRepository<TipoTerapia, Long> 
     boolean existsByNombre(String nombre);
 }
 
+

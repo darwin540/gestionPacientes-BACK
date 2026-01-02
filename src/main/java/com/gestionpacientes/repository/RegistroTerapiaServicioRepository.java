@@ -29,3 +29,4 @@ public interface RegistroTerapiaServicioRepository extends JpaRepository<Registr
     );
 }
 
+
